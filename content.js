@@ -1,55 +1,5 @@
 const HIDDEN_CLASS = 'chatgpt-hide-message';
 const CONTROLS_ID = 'chatgpt-hide-controls';
-const STORAGE_KEY = 'chatgpt-hide-hidden-keys';
-const ACTION_BAR_KEY = 'chatgpt-hide-actions';
-
-const loadHiddenKeys = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return new Set();
-    }
-    const parsed = JSON.parse(raw);
-    return new Set(Array.isArray(parsed) ? parsed : []);
-  } catch (error) {
-    return new Set();
-  }
-};
-
-const saveHiddenKeys = (keys) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(keys)));
-  } catch (error) {
-    // ignore storage errors
-  }
-};
-
-const simpleHash = (value) => {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(index);
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36);
-};
-
-const getMessageKey = (container) => {
-  const messageNode = container.querySelector('[data-message-author-role]');
-  const role =
-    messageNode?.getAttribute('data-message-author-role') || 'unknown';
-  const messageId =
-    container.getAttribute('data-message-id') ||
-    messageNode?.getAttribute('data-message-id') ||
-    container.id;
-  if (messageId) {
-    return `${role}:${messageId}`;
-  }
-  const text = messageNode?.textContent?.trim() || container.textContent || '';
-  const snippet = text.replace(/\s+/g, ' ').slice(0, 160);
-  return `${role}:${simpleHash(snippet)}`;
-};
-
-const hiddenKeys = loadHiddenKeys();
 
 const getMessageContainer = (messageNode) => {
   return (
@@ -61,22 +11,14 @@ const getMessageContainer = (messageNode) => {
 
 const hideMessage = (container) => {
   container.classList.add(HIDDEN_CLASS);
-  hiddenKeys.add(getMessageKey(container));
-  saveHiddenKeys(hiddenKeys);
 };
 
 const showMessage = (container) => {
   container.classList.remove(HIDDEN_CLASS);
-  hiddenKeys.delete(getMessageKey(container));
-  saveHiddenKeys(hiddenKeys);
 };
 
 const toggleMessage = (container) => {
-  if (container.classList.contains(HIDDEN_CLASS)) {
-    showMessage(container);
-  } else {
-    hideMessage(container);
-  }
+  container.classList.toggle(HIDDEN_CLASS);
 };
 
 const buildMessageButton = (container) => {
@@ -86,9 +28,7 @@ const buildMessageButton = (container) => {
 
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = container.classList.contains(HIDDEN_CLASS)
-    ? 'Show'
-    : 'Hide';
+  button.textContent = 'Hide';
   button.className = 'chatgpt-hide-button';
   button.setAttribute('data-chatgpt-hide-button', 'true');
   button.addEventListener('click', (event) => {
@@ -109,10 +49,6 @@ const applyButtonsToMessages = () => {
   );
   messageNodes.forEach((messageNode) => {
     const container = getMessageContainer(messageNode);
-    const key = getMessageKey(container);
-    if (hiddenKeys.has(key)) {
-      container.classList.add(HIDDEN_CLASS);
-    }
     buildMessageButton(container);
   });
 };
@@ -133,8 +69,6 @@ const showAllMessages = () => {
     '[data-testid="conversation-turn"], article'
   );
   containers.forEach((container) => showMessage(container));
-  hiddenKeys.clear();
-  saveHiddenKeys(hiddenKeys);
   document
     .querySelectorAll('[data-chatgpt-hide-button="true"]')
     .forEach((button) => {
@@ -144,35 +78,16 @@ const showAllMessages = () => {
 
 const toggleActionBars = () => {
   document.documentElement.classList.toggle('chatgpt-hide-actions');
-  persistActionBarState();
-  updateActionBarButtonText();
-};
-
-const persistActionBarState = () => {
-  try {
-    localStorage.setItem(
-      ACTION_BAR_KEY,
-      document.documentElement.classList.contains('chatgpt-hide-actions')
-        ? '1'
-        : '0'
-    );
-  } catch (error) {
-    // ignore storage errors
-  }
-};
-
-const updateActionBarButtonText = () => {
   const toggleButton = document.querySelector(
     '#chatgpt-hide-actions-toggle'
   );
-  if (!toggleButton) {
-    return;
+  if (toggleButton) {
+    toggleButton.textContent = document.documentElement.classList.contains(
+      'chatgpt-hide-actions'
+    )
+      ? 'Show action bars'
+      : 'Hide action bars';
   }
-  toggleButton.textContent = document.documentElement.classList.contains(
-    'chatgpt-hide-actions'
-  )
-    ? 'Show action bars'
-    : 'Hide action bars';
 };
 
 const injectControls = () => {
@@ -226,11 +141,7 @@ const observeMessages = () => {
 };
 
 const init = () => {
-  if (localStorage.getItem(ACTION_BAR_KEY) === '1') {
-    document.documentElement.classList.add('chatgpt-hide-actions');
-  }
   injectControls();
-  updateActionBarButtonText();
   applyButtonsToMessages();
   observeMessages();
 };
