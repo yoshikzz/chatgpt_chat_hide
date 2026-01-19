@@ -3,7 +3,9 @@
   "name": "ChatGPT Chat Hider",
   "version": "0.1.0",
   "description": "Hide individual or all ChatGPT questions and answers, including action bars.",
-  "permissions": [],
+  "permissions": [
+    "storage"
+  ],
   "content_scripts": [
     {
       "matches": [
